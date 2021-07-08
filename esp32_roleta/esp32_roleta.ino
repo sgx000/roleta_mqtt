@@ -3,9 +3,9 @@
 #include <ESP32Encoder.h>
 #include <SimpleTimer.h>
 #include "OTA.h"
+#include "Secret.h"
 
-#define wifi_ssid "wifi"
-#define wifi_password "passwd"
+
 const char* topic = "iot/roleta_";
 
 #define mqtt_server "192.168.1.6"
@@ -33,6 +33,8 @@ int encoder_value = 0;
 int encoder_max = 100;
 int encoder_in = 0;
 int boot = 0;
+int loop_increment = 0;
+
 
 WiFiClient espClient;
 PubSubClient client;
@@ -51,9 +53,7 @@ void setup() {
   pinMode(MOTOR_B, OUTPUT);
   pinMode(MOTOR_PWM, OUTPUT);
   encoder.clearCount();
-  String id_ota;
-  id_ota = "roleta_"+composeClientID();
-  setupOTA(id_ota.c_str(), wifi_ssid, wifi_password);
+  setupOTA("roleta", wifi_ssid, wifi_password);
 }
 
 
@@ -73,6 +73,7 @@ void setup_wifi() {
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
+  delay(500);
   Serial.println(WiFi.localIP());
   String clientId = composeClientID() ;
   Serial.println(clientId);
@@ -204,6 +205,7 @@ if(boot ==0){
       temp += "/startup";
     client.publish(temp.c_str(), "hello", true);
 }
+if(loop_increment >10){
   if(roleta_request < roleta_pos){
       digitalWrite(MOTOR_A,   HIGH);
       digitalWrite(MOTOR_B,   LOW);
@@ -219,12 +221,17 @@ if(boot ==0){
   if (roleta_request == roleta_pos){
       digitalWrite(MOTOR_PWM, LOW);
   }
+}
   encoder_value = encoder.getCount();
   //roleta_pos = map(encoder_value, 0, encoder_max, 0, 100);
   roleta_pos =  encoder_value / (encoder_max/100.0) ;
   client.loop();
   if (firstTimer.isReady()){ 
     ArduinoOTA.handle();
+    if(loop_increment<10){
+      loop_increment++;
+      Serial.println(loop_increment);
+    }
     // Publishes a random 0 and 1 like someone switching off and on randomly (random(2))
       temp = "";
       temp += topic;
